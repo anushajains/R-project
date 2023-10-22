@@ -1,0 +1,123 @@
+install.packages("marray")
+library(limma)
+library(marray)
+
+# Load the swirl data set
+data(swirl)
+print(swirl)
+maImage(swirl)
+
+
+#2
+
+
+maPlot(swirl[,3], pch = ".", col = "blue", xlab = "Average log-intensity (A)", ylab = "Log-intensity ratio (M)",main= "array3", legend.func = NULL, lines.func = NULL)
+
+
+#3#4
+swirl.normm <- maNorm(swirl[,3], norm="median")
+
+
+maPlot(swirl.normm, pch = ".", col = "blue", xlab = "Average log-intensity (A)", ylab = "Log-intensity ratio (M)", main = "MvA Plot (Global Median Location Normalization)",legend.func = NULL, lines.func = NULL)
+#6
+
+swirl.normm <- maNorm(swirl[,3], norm="loess")
+
+maPlot(swirl.normm, pch = ".", col = "blue", xlab = "Average log-intensity (A)", ylab = "Log-intensity ratio (M)", main = "MvA Plot (Global Median Location Normalization)",legend.func = NULL, lines.func = NULL)
+
+#8
+
+library(convert) 
+dir.path <- "C:\\Users\\anush\\Downloads\\GenePix_files"
+a.cdna  <- read.maimages(files=c("patient1.gpr","patient2.gpr"),path=dir.path,source = "genepix",other.columns=list("Flags"))
+a.cdna <- as(a.cdna,"marrayRaw")
+
+#9
+
+
+# No normalization
+data_no_norm1 <- a.cdna[,1]
+data_loess_norm1 <- maNorm(a.cdna[,1], norm = "p")
+data_scale_mad_norm1 <- maNorm(a.cdna[,1], norm="scalePrintTipMAD")
+par(mfrow = c(3, 1))
+maPlot(data_no_norm1, main = "No Normalization- Patient 1", legend.func = NULL, lines.func = NULL)
+maPlot(data_loess_norm1, main = "Print-tip Loess Normalization- Patient 1",legend.func = NULL, lines.func = NULL)
+maPlot(data_scale_mad_norm1, main = "Scale Print-tip with MAD Normalization- Patient 1",legend.func = NULL, lines.func = NULL)
+
+data_no_norm2 <- a.cdna[,2]
+data_loess_norm2 <- maNorm(a.cdna[,2], norm = "p")
+data_scale_mad_norm2 <- maNorm(a.cdna[,2], norm="scalePrintTipMAD")
+maPlot(data_no_norm2, main = "No Normalization- Patient2", legend.func = NULL, lines.func = NULL)
+maPlot(data_loess_norm2, main = "Print-tip Loess Normalization- Patient 2",legend.func = NULL, lines.func = NULL)
+maPlot(data_scale_mad_norm2, main = "Scale Print-tip with MAD Normalization-Patient 2",legend.func = NULL, lines.func = NULL)
+
+
+
+par(mfrow = c(1, 1)) # Restore default layout (1x1)
+
+#10
+
+matrix<-cbind(maM(data_loess_norm1),maM(data_loess_norm2))
+probe<- maGnames(a.cdna)
+probe<-as.data.frame(probe@maInfo["ID"])
+rownames(matrix) <- probe$ID
+print(matrix)
+
+#11
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+# Check the structure of your marrayRaw object
+
+
+BiocManager::install("affy")
+if (!require("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("fpc")
+library(affydata) 
+library(limma)
+library(affy)
+library(fpc)
+library(affyPLM)
+
+#12
+dir.path<-"C:\\Users\\anush\\Downloads\\HGU133plus_files"
+fns <- sort(list.celfiles(path=dir.path,full.names=TRUE))
+data.affy <- ReadAffy(filenames=fns,phenoData=NULL)
+
+
+#13
+quantile_normalized_data <- expresso(data.affy,
+                                     bgcorrect.method = "rma",
+                                     normalize.method = "quantiles",
+                                     summary.method = "medianpolish",
+                                     pmcorrect.method = "pmonly")
+
+rma_matrix<- exprs(quantile_normalized_data)
+head(rma_matrix)
+
+mas_normalized_data <- expresso(data.affy,
+                                bgcorrect.method="mas",
+                                normalize.method = "quantiles",
+                                summary.method = "medianpolish",
+                                pmcorrect.method = "mas")
+
+mas_matrix<- exprs(mas_normalized_data)
+head(mas_matrix)
+
+#14
+
+cor_rma <- cor(rma_matrix)
+
+cor_mas <- cor(mas_matrix)
+
+mean_cor_rma <- mean(cor_rma)
+mean_cor_mas <- mean(cor_mas)
+print(mean_cor_rma)
+print(mean_cor_mas)
+
+
+
+
+
+
