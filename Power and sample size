@@ -1,0 +1,114 @@
+data <- read.table(file = "C:\\Users\\anush\\Downloads\\eisen.txt", header = TRUE, na.strings = "NA", blank.lines.skip = FALSE, row.names = 1)
+classData <- read.table(file = "C:\\Users\\anush\\Downloads\\eisenClasses.txt", header = TRUE)
+dimnames(data)[[2]]
+
+#4
+class_order <- classData[order(classData$class), ]
+
+data_reordered <- data[, class_order$sample]
+dimnames(data_reordered)[[2]]
+#5
+
+gene_data <- data_reordered[8000,]
+
+gene_data <- gene_data[!is.na(gene_data)]
+print(gene_data)
+
+class_label <- classData$class
+
+gene_data <- gene_data[!is.na(class_label)]
+print(class_label)
+
+boxplot(gene_data ~ class_label, xlab = "Class", ylab = "Gene Expression",
+        main = "Gene Expression Profile for gene 8000", col = c("red", "blue"))
+par(mfrow = c(2, 1))
+hist(gene_data[class_label == 1], col = "red", xlab = "Gene Expression", ylab = "Frequency", main = "Class 1", xlim = c(min(gene_data,na.rm=TRUE), max(gene_data,na.rm=TRUE)))
+hist(gene_data[class_label == 2], col = "blue", xlab = "Gene Expression", ylab = "Frequency", main = "Class 2", xlim = c(min(gene_data,na.rm=TRUE), max(gene_data,na.rm=TRUE)))
+par(mfrow = c(1, 1))
+
+#6
+cl <- as.character(classData[,2])
+print(cl)
+dat <- data_reordered[,cl]
+gc <- cl[1:19]
+act <- cl[20:39]
+x <- as.numeric(data[8000,gc])
+y <- as.numeric(data[8000,act])
+x <- x[!is.na(x)]
+y <- y[!is.na(y)]
+nx <- length(x)
+ny <- length(y)
+pool.var <- (((nx-1)*var(x)) + ((ny-1)*var(y)))/(nx+ny-2)
+cat("Pooled Variance:", pool.var, "\n")
+install.packages("pwr")
+library(pwr)
+
+effect_size <- log2(1.5) 
+print(effect_size)
+sd1<-sd(x)
+sd2<-sd(y)
+
+pooled_sd <- sqrt(((sd1^2) + (sd2^2))/2)
+print(pooled_sd)
+dvalue<-effect_size/pooled_sd
+sample_size <- pwr.t.test(d = dvalue, sig.level = 0.01, power = 0.80, alternative = "two.sided")$n
+print(dvalue)
+
+cat("Minimum Sample  Size Needed:", sample_size, "per group\n")
+
+#7
+
+delta <- abs(mean(gene_data[class_label == 1], na.rm = TRUE) - mean(gene_data[class_label == 2], na.rm = TRUE))
+print(delta)
+
+effect_size <- delta / sqrt(pool.var)
+print(effect_size)
+
+sample_size <- pwr.t.test(d = effect_size, sig.level = 0.01, power = 0.80, alternative = "two.sided")$n
+
+cat("Minimum Sample Size Needed:", sample_size, "per group\n")
+
+#8
+install.packages("ssize")
+install.packages("gdata")
+install.packages("matrixStats")
+
+library(gdata)
+library(matrixStats)
+
+matrixData <- as.matrix(data_reordered[, class_order$sample])
+
+std_allgene<- apply(matrixData, 1, sd, na.rm = TRUE)
+hist(std_allgene,n=20, col="#9cf6f6", border="#232e21", main="", xlab="Standard Deviation (for data on the log2
+scale)")
+dens <- density(std_allgene)
+lines(dens$x, dens$y*par("usr")[4]/max(dens$y),col="#f42272", lwd=3)
+title("Histogram of Standard Deviations for 12,625 genes")
+
+#9
+#library(BiocManager)
+install.packages("ssize")
+library(ssize)
+fold.change <- 3
+sig.level <- 0.05
+power <- 0.80
+
+
+# Calculate and plot sample sizes
+
+all.size <- ssize(sd = std_allgene, delta = log2(fold.change), sig.level = sig.level, power = power)
+ssize.plot(all.size, lwd=2, col="magenta", xlim=c(1,20))
+
+xmax <- par("usr")[2] - 1
+ymin <- par("usr")[3] + 0.05
+legend(x = xmax, y = ymin, legend = strsplit(paste("fold change =", fold.change, ", alpha =", sig.level,
+                                                   ", power =", power, ", # genes =", length(std_allgene), sep = ''), ",")[[1]], 
+       xjust = 1, yjust = 0, cex = 1.0)
+title("Sample Size to Detect 2-Fold Change")
+
+#if (!require("BiocManager", quietly = TRUE))
+  #install.packages("BiocManager")
+
+#BiocManager::install("ssize", force=TRUE)
+
+
