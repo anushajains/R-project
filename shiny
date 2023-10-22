@@ -1,1 +1,114 @@
+#2
+data<-read.table(file="C:\\Users\\anush\\Downloads\\spellman\\spellman.txt",header=T,row.names=1)
+#3
+dim(data)
+#4
+data_cdc15<-data[,23:46]
+
+#5
+matrix <- cor(data_cdc15, use = "pairwise.complete.obs", method = "pearson")
+install.packages("reshape2")
+library(reshape2)
+
+library(ggplot2)
+correlation_matrix <- melt(matrix)
+custom_palette <- scale_fill_gradientn(colors = c("blue", "pink", "purple", "red"))
+ggplot(correlation_matrix, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  custom_palette +
+  labs(title = "Cdc15 Correlation Matrix between Time Points",
+       x = "Time Points",
+       y = "Time Points") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_fixed()
+
+#6
+geneData[is.na(geneData)] <- mean(geneData, na.rm = TRUE)
+genex <- "YAL002W"
+genexData <- data_cdc15[genex,]
+
+rowMean <- rowMeans(genexData, na.rm = TRUE)
+
+genexData[is.na(genexData)] <- rowMean
+
+#7
+y<- as.numeric(genexData)
+time_points <- as.numeric(gsub("cdc15_", "", colnames(data_cdc15)))
+
+plot(time_points,y, xaxt='n', type = "l", lwd = 2, 
+     xlab = "Time Points", ylab = "Gene Expression",
+     main = "Gene Expression Profile for YAL002W",col="blue")
+
+axis(1, at = time_points, labels = time_labels, las=2, cex.axis=0.7)
+
+
+#8
+
+install.packages("shiny")
+library(shiny)
+
+# Define the UI
+ui <- fluidPage(
+  sidebarLayout(
+    sidebarPanel(
+      selectInput('xcol', ('X Variable'), colnames(data_cdc15)), br(),
+      selectInput('ycol', 'Y Variable', colnames(data_cdc15))
+    ),
+    mainPanel(
+      plotOutput('scatterplot')
+    )
+  )
+)
+
+# Define the server logic
+server <- function(input, output) {
+  output$scatterplot <- renderPlot({
+    x <- data_cdc15[, input$xcol]
+    y <- data_cdc15[, input$ycol]
+    plot(x, y, xlab = input$xcol, ylab = input$ycol, main = "Correlation Plot")
+  })
+}
+
+# Run the Shiny app
+shinyApp(ui = ui, server = server)
+
+# 7 (Revised)
+library(ggplot2)
+
+genex <- "YAL002W"
+genexData <- data_cdc15[genex,]
+
+rowMean <- rowMeans(genexData, na.rm = TRUE)
+
+genexData[is.na(genexData)] <- rowMean
+
+y <- as.numeric(genexData)
+time_points <- as.numeric(gsub("cdc15_", "", colnames(data_cdc15)))
+time_labels <- gsub("cdc15_", "", colnames(data_cdc15))  # Labels for time points
+
+# Create a data frame for plotting
+gene_df <- data.frame(Expression = y, TimePoints = time_labels)
+
+# Create the line plot
+ggplot(gene_df, aes(x = TimePoints, y = Expression, group = 1)) +
+  geom_line(color = "blue", size = 2) +
+  xlab("Time Points") +
+  ylab("Gene Expression") +
+  ggtitle("Gene Expression Profile for YAL002W") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+y <- as.numeric(genexData)
+time_points <- as.numeric(gsub("cdc15_", "", colnames(data_cdc15)))
+time_labels <- gsub("cdc15_", "", colnames(data_cdc15))  # Labels for time points
+
+# Create a line plot
+plot(time_points, y, type = "l", lwd = 2,
+     xlab = "Time Points", ylab = "Gene Expression",
+     main = "Gene Expression Profile for YAL002W", col = "blue")
+
+
+# Add custom x-axis labels
+axis(1, at = time_points, labels = time_labels, las = 3)
 
