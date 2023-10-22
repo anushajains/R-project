@@ -1,49 +1,175 @@
-# History files
-.Rhistory
-.Rapp.history
 
-# Session Data files
-.RData
-.RDataTmp
+#1
 
-# User-specific files
-.Ruserdata
+data<-read.table(file="C:\\Users\\anush\\Downloads\\renal_cell_carcinoma(1)\\renal_cell_carcinoma.txt",  header = TRUE, sep = "\t", row.names = 1)
+dim(data)
 
-# Example code in package build process
-*-Ex.R
 
-# Output files from R CMD build
-/*.tar.gz
+column_names= colnames(data)
+print(column_names)
+new_column_names <- character(length(column_names))
+for (i in 1:length(column_names)) {
+  gsm_id <-column_names[i]
+  if (i <= 11) {
+    new_column_names[i] <- paste(gsm_id, "Normal", sep = "_")
+  } else {
+    new_column_names[i] <- paste(gsm_id, "Tumor", sep = "_")
+  }
+}
 
-# Output files from R CMD check
-/*.Rcheck/
+colnames(data) <- new_column_names
+print(colnames(data))
 
-# RStudio files
-.Rproj.user/
+#correlation plot
 
-# produced vignettes
-vignettes/*.html
-vignettes/*.pdf
+library(gplots)
+matrix <- cor(data, use = "pairwise.complete.obs")
+library(reshape2)
+library(ggplot2)
+correlation_matrix <- melt(matrix)
+custom_palette <- scale_fill_gradientn(colors = c("blue",  "red"))
+ggplot(correlation_matrix, aes(Var1, Var2, fill = value)) +
+  geom_tile() +
+  custom_palette +
+  labs(title = " Correlation plot",
+       x = "samples",
+       y = "samples") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  coord_fixed()
 
-# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
-.httr-oauth
+#dendrogram
+dendrogram <- hclust(dist(matrix))
+plot(dendrogram, 
+     main = "Hierarchical Clustering Dendrogram",
+     xlab = "Samples",
+     ylab = "Distance")
 
-# knitr and R markdown default cache directories
-*_cache/
-/cache/
+labels <- c(rep("Normal", 11), rep("Tumor", 11))
+sample_info <- data.frame(GSM_ID = colnames(data), Condition = labels)
+print(sample_info)
+colors <- ifelse(sample_info$Condition == "Tumor", "red", "blue")
+mean <- apply(log2(data),2, mean)
+sd<-sqrt(apply(log2(data),2,var))
+cv<-sd/mean
+print(cv)
 
-# Temporary files created by R markdown
-*.utf8.md
-*.knit.md
+plot(mean, cv, main = "CV vs. Mean Plot",xlab = "Mean Expression",
+     ylab = "Coefficient of Variation",
+     pch = 19, col = colors)
+sample_names<- colnames(data)
+text(mean,cv, labels = sample_names,cex=0.5, pos = 2, offset = 2)
 
-# R Environment Variables
-.Renviron
+#avg correlation plot
 
-# pkgdown site
-docs/
+avg_correlation <- apply(matrix, 1, mean)
+plot(avg_correlation, 
+     main = "Average Correlation Plot",
+     xlab = "Samples",
+     ylab = "Average Correlation",
+     pch = 19, col = colors)
+sample_names<- colnames(data)
+text(x = 1:length(sample_names), y = avg_correlation, labels = sample_names,cex=0.4, pos = 2, offset = 0.4)
 
-# translation temp files
-po/*~
+#if (!require("BiocManager", quietly = TRUE))
+  #install.packages("BiocManager")
 
-# RStudio Connect folder
-rsconnect/
+#BiocManager::install("impute")
+library(impute)
+
+columns_to_remove <- c(10, 19)
+newdata <- data[, -columns_to_remove]
+
+dim(newdata)
+
+```
+#8
+```{r}
+#206672_at   for AQP2
+#206054_at 217512_at  for KNG1
+
+
+aqp2_probeset <- "206672_at" 
+aqp2_data <- newdata[aqp2_probeset, ]
+plot(1:ncol(aqp2_data), as.vector(aqp2_data), type = "l",
+     xlab = "Samples", ylab = "Expression Intensity",
+     main = "AQP2 Expression Profile")
+
+kng1_probeset1<-c("206054_at")
+kng1_data1 <- newdata[kng1_probeset1, ]
+plot(1:ncol(kng1_data1), as.vector(kng1_data1), type = "l",
+     xlab = "Samples", ylab = "Expression Intensity",
+     main = "KNG1 Expression Profile for Probeset1")
+
+kng1_probeset2<-c("217512_at")
+kng1_data2 <- (newdata[kng1_probeset2, ])
+plot(1:ncol(kng1_data2), as.vector(kng1_data2), type = "l",
+     xlab = "Samples", ylab = "Expression Intensity",
+     main = "KNG1 Expression Profile for Probeset2")
+
+
+original_value <- newdata["206054_at","GSM146784_Normal"]
+original_data_matrix<-as.matrix(newdata)
+ 
+new_value<-newdata["206054_at","GSM146784_Normal"]
+new_value<-NA
+newdata["206054_at", "GSM146784_Normal"] <- new_value
+data_matrix <- as.matrix(newdata)
+data_matrix["206054_at",]
+```
+#10
+```{r}
+impute_data<-impute.knn(data_matrix ,k = 6)
+```
+#11
+```{r}
+imputed_data_matrix <- impute_data$data
+imputed_value <- imputed_data_matrix["206054_at","GSM146784_Normal"]
+print(imputed_value)
+relative_error<- abs((original_value-imputed_value)/ original_value)
+print(relative_error)
+
+library(pcaMethods)
+
+
+imputed_data_svd <- pca(data_matrix, method = "svdImpute", nPcs = 9)
+imputed_data_matrix_svd <- imputed_data_svd@completeObs
+imputed_value_2 <- imputed_data_matrix_svd["206054_at", "GSM146784_Normal"]
+print(imputed_value_2)
+
+library(ggplot2)
+gene_profile <- original_data_matrix["206054_at",]
+print(gene_profile)
+
+plot_data_gene <- data.frame(
+  Sample = colnames(data_matrix),  # Sample names as x-axis
+  Value = as.numeric(gene_profile)  # Gene expression values
+)
+
+plot_data_impute <- data.frame(
+  Method = c("Actual", "KNN Imputed", "SVD Imputed"),
+  Value = c(original_value, imputed_value, imputed_value_2)
+)
+print(plot_data_impute)
+
+
+gg <- ggplot(plot_data_gene, aes(x = Sample, y = Value)) +
+  labs(
+    title = paste("Gene Profile Plot for", "206054_at"),
+    x = "Sample",
+    y = "Expression Intensity"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +  # Rotate x-axis labels vertically
+  geom_point() + 
+  geom_line(data = plot_data_gene, aes(x = Sample, y = Value, group = 1), size = 0.5)
+
+point_colors <- c("Actual" = "blue", "KNN Imputed" = "green", "SVD Imputed" = "red")
+
+gg <- gg + geom_point(data = plot_data_impute, aes(x = Method, y = Value, color = Method), size = 3) 
+  scale_color_manual(values = point_colors)  
+  
+
+print(gg)
+
+
